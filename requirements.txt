@@ -1,0 +1,21 @@
+# Core
+tidyverse
+data.table
+lubridate
+DataExplorer
+ggplot2
+plotly
+readr
+
+# Modeling
+keras
+tensorflow
+caret
+rsample
+
+# Reporting
+rmarkdown
+DataExplorer
+
+# Realtime / App
+shiny
