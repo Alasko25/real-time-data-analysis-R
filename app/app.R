@@ -15,7 +15,7 @@ if ("Churn" %in% colnames(data)) data$Churn <- ifelse(data$Churn == "Yes", 1, 0)
 cat_cols <- sapply(data, is.factor)
 data[cat_cols] <- lapply(data[cat_cols], function(x) as.numeric(as.factor(x)))
 
-model_path <- "app/models/keras_model.h5"
+model_path <- "models/keras_model.h5"
 model <- NULL
 if (file.exists(model_path)) {
   model <- load_model_hdf5(model_path)
@@ -52,7 +52,8 @@ server <- function(input, output, session) {
     df = data,
     predictions = data.frame(),
     history = NULL,
-    monitoring = FALSE
+    monitoring = FALSE,
+    display_count = 0  # compteur pour affichage progressif
   )
 
   output$data_table <- renderDT({ datatable(values$df) })
@@ -117,43 +118,77 @@ server <- function(input, output, session) {
   })
 
   observe({
-    invalidateLater(3000, session)
-    if (isTRUE(values$monitoring) && !is.null(model)) {
-      files <- list.files("app/stream_input", full.names = TRUE)
-      if (length(files) == 0) return()
+  invalidateLater(3000, session)
+  if (isTRUE(values$monitoring) && !is.null(model)) {
+    files <- list.files("stream_input/", full.names = TRUE)
+    print(paste("🔄 Found", length(files), "files in stream_input"))
 
-      for (file in files) {
-        df <- read.csv(file, stringsAsFactors = TRUE)
-        if ("customerID" %in% names(df)) df$customerID <- NULL
-        if ("Churn" %in% names(df)) df$Churn <- NULL
+    if (length(files) == 0) return()
 
-        cat_cols <- sapply(df, is.factor)
-        df[cat_cols] <- lapply(df[cat_cols], function(x) as.numeric(as.factor(x)))
-        df_scaled <- scale(df)
+    for (file in files) {
+      print(paste("📥 Reading:", file))
 
-        pred <- predict(model, df_scaled)
-        df$Prediction <- ifelse(pred > 0.5, "Churn", "No Churn")
+      df <- read.csv(file, stringsAsFactors = TRUE)
+      if ("customerID" %in% names(df)) df$customerID <- NULL
+      if ("Churn" %in% names(df)) df$Churn <- NULL
 
-        values$predictions <- rbind(values$predictions, df)
-        file.remove(file)
-      }
+      cat_cols <- sapply(df, is.factor)
+      df[cat_cols] <- lapply(df[cat_cols], function(x) as.numeric(as.factor(x)))
+      df_scaled <- scale(df)
+
+      pred <- predict(model, df_scaled)
+      df$Prediction <- ifelse(pred > 0.5, "Churn", "No Churn")
+      df$Timestamp <- Sys.time()
+
+      print(paste("✅ Processed", nrow(df), "rows"))
+
+      values$predictions <- rbind(values$predictions, df)
+      file.remove(file)
     }
-  })
+  }
+})
+
+observe({
+  invalidateLater(2000, session)  # toutes les 2s on montre un peu plus
+  if (isTRUE(values$monitoring)) {
+    isolate({
+      values$display_count <- min(values$display_count + 5, nrow(values$predictions))
+    })
+  }
+})
+
+
 
   output$live_data <- renderDT({
-    req(nrow(values$predictions) > 0)
-    datatable(values$predictions)
-  })
+  req(nrow(values$predictions) > 0)
+
+  # Sélection progressive des lignes à afficher
+  display_n <- min(values$display_count, nrow(values$predictions))
+  datatable(head(values$predictions, display_n))
+})
+
 
   output$churnPlot <- renderPlot({
-    req(nrow(values$predictions) > 0)
-    barplot(
-      table(values$predictions$Prediction),
-      col = c("green", "red"),
-      main = "Live Churn Predictions",
-      ylab = "Count"
-    )
-  })
+  req(nrow(values$predictions) > 0)
+  
+  # Sélection progressive des lignes à afficher
+  display_n <- min(values$display_count, nrow(values$predictions))
+  df_display <- head(values$predictions, display_n)
+
+  df_display$TimeRounded <- as.POSIXct(round(df_display$Timestamp, "mins"))
+
+  ggplot(df_display, aes(x = TimeRounded, fill = Prediction)) +
+    geom_bar(position = "stack") +
+    scale_fill_manual(values = c("Churn" = "red", "No Churn" = "green")) +
+    labs(
+      title = "📈 Évolution des prédictions en temps réel",
+      x = "Temps (arrondi à la minute)",
+      y = "Nombre de prédictions"
+    ) +
+    theme_minimal()
+})
+
+
 
   observeEvent(input$report, {
   showModal(modalDialog("⏳ Generating PDF report... Please wait...", footer = NULL))
