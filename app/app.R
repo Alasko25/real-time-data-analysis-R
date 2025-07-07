@@ -156,18 +156,53 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$report, {
-    rmarkdown::render(
-      input = "../scripts/report_template.Rmd",
+  showModal(modalDialog("⏳ Generating PDF report... Please wait...", footer = NULL))
+
+  # 1. Auto report from DataExplorer
+  try({
+    DataExplorer::create_report(
+      data = values$df,
+      output_format = "pdf_document",
       output_file = "report.pdf",
-      output_dir = "../outputs/reports",
-      params = list(
-        data = values$df,
-        history = values$history
-      ),
-      envir = new.env()
+      output_dir = "../outputs/reports"
     )
-    showModal(modalDialog("✅ PDF report generated!", easyClose = TRUE))
-  })
+  }, silent = TRUE)
+
+  # 2. Custom scatter plot (PDF)
+  try({
+    p2 <- ggplot(values$df, aes(x = tenure, y = MonthlyCharges, color = as.factor(Churn))) +
+      geom_point(alpha = 0.5) +
+      theme_minimal() +
+      labs(color = "Churn", title = "Customer Distribution: Tenure vs Monthly Charges")
+    
+    ggsave("../outputs/reports/customer_scatterplot.pdf", plot = p2, width = 7, height = 5)
+  }, silent = TRUE)
+  
+  # 3. Training loss and accuracy (PDF)
+  try({
+    if (!is.null(values$history)) {
+      loss_df <- data.frame(
+        epoch = seq_along(values$history$metrics$loss),
+        Loss = values$history$metrics$loss,
+        Accuracy = values$history$metrics$accuracy
+      )
+      
+      p <- ggplot(loss_df, aes(x = epoch)) +
+        geom_line(aes(y = Loss, color = "Loss")) +
+        geom_line(aes(y = Accuracy, color = "Accuracy")) +
+        labs(title = "Model Training Metrics", y = "Value", x = "Epoch") +
+        scale_color_manual(values = c("Loss" = "blue", "Accuracy" = "green")) +
+        theme_minimal()
+      
+      ggsave("../outputs/reports/model_training_metrics.pdf", plot = p, width = 7, height = 5)
+    }
+  }, silent = TRUE)
+
+  removeModal()
+  showModal(modalDialog("✅ All reports and plots generated in 'outputs/reports/'", easyClose = TRUE))
+})
+
+
 }
 
 shinyApp(ui, server)
