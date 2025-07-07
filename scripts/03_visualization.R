@@ -1,8 +1,11 @@
+# 03_Visualization.R
 library(ggplot2)
 
-ggplot(data, aes(x = var1, y = var2, color = category)) +
-  geom_point() +
-  theme_minimal()
+# Example: tenure vs MonthlyCharges by Churn
+ggplot(data, aes(x = tenure, y = MonthlyCharges, color = as.factor(Churn))) +
+  geom_point(alpha = 0.5) +
+  theme_minimal() +
+  labs(color = "Churn")
 
 library(plotly)
-plot_ly(data, x = ~var1, y = ~var2, type = "scatter", mode = "markers")
+plot_ly(data, x = ~tenure, y = ~MonthlyCharges, color = ~as.factor(Churn), type = "scatter", mode = "markers")

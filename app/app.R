@@ -2,28 +2,44 @@ library(shiny)
 library(keras)
 library(DT)
 
+# Load pre-trained model
 model <- load_model_hdf5("models/keras_model.h5")
 
+# UI
 ui <- fluidPage(
-  titlePanel("Live Customer Feedback Classification"),
-  mainPanel(
-    actionButton("start", "Start Real-Time Analysis"),
-    DTOutput("live_data"),
-    plotOutput("fraudPlot")
+  titlePanel("Real-Time Customer Churn Prediction"),
+  sidebarLayout(
+    sidebarPanel(
+      actionButton("start", "Start Real-Time Monitoring"),
+      helpText("Live churn classification based on incoming customer data.")
+    ),
+    mainPanel(
+      DTOutput("live_data"),
+      plotOutput("churnPlot")
+    )
   )
 )
 
+# Server
 server <- function(input, output, session) {
   values <- reactiveVal(data.frame())
 
   observeEvent(input$start, {
-    invalidateLater(3000, session)  # réexécute tous les 3s
+    invalidateLater(3000, session)
     observe({
       files <- list.files("app/stream_input", full.names = TRUE)
       for (file in files) {
-        df <- read.csv(file)
-        pred <- predict(model, as.matrix(df))
-        df$Prediction <- ifelse(pred > 0.5, "Positive", "Negative")
+        df <- read.csv(file, stringsAsFactors = TRUE)
+        if ("customerID" %in% names(df)) df$customerID <- NULL
+        if ("Churn" %in% names(df)) df$Churn <- NULL
+
+        categorical <- sapply(df, is.factor)
+        df[categorical] <- lapply(df[categorical], function(x) as.numeric(as.factor(x)))
+        X <- scale(df)
+
+        pred <- predict(model, X)
+        df$Prediction <- ifelse(pred > 0.5, "Churn", "No Churn")
+
         values(rbind(values(), df))
         file.remove(file)
       }
@@ -31,8 +47,15 @@ server <- function(input, output, session) {
   })
 
   output$live_data <- renderDT({ values() })
-  output$fraudPlot <- renderPlot({
-    barplot(table(values()$Prediction), col = c("green", "red"))
+
+  output$churnPlot <- renderPlot({
+    req(nrow(values()) > 0)
+    barplot(
+      table(values()$Prediction),
+      col = c("green", "red"),
+      main = "Live Churn Predictions",
+      ylab = "Count"
+    )
   })
 }
 

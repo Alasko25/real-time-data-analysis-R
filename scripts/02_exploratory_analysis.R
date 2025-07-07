@@ -1,6 +1,6 @@
+# Exploratory Data Analysis
+library(DataExplorer)
 summary(data)
 cor(data)
-library(DataExplorer)
 plot_correlation(data)
-plot_boxplot(data)
-# Exploratory Data Analysis
+plot_boxplot(data, by = "Churn")
