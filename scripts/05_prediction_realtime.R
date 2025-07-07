@@ -1,9 +1,9 @@
 # 05_prediction_realtime.R
 library(keras)
-model <- load_model_hdf5("models/keras_model.h5")
+model <- load_model_hdf5("app/models/keras_model.h5")
 
 # Simulated new data
-new_data <- read.csv("data/streaming/data2.csv", stringsAsFactors = TRUE)
+new_data <- read.csv("data/data2.csv", stringsAsFactors = TRUE)
 
 # Preprocessing
 if ("customerID" %in% colnames(new_data)) new_data$customerID <- NULL

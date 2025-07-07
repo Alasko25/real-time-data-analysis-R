@@ -16,6 +16,10 @@ rsample
 # Reporting
 rmarkdown
 DataExplorer
+tinytex
 
 # Realtime / App
 shiny
+DT
+gapminder
+gifski

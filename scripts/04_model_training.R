@@ -19,4 +19,4 @@ model %>% compile(
 
 # Train model
 model %>% fit(X, Y, epochs = 20, batch_size = 32, validation_split = 0.2)
-save_model_hdf5(model, filepath = "models/keras_model.h5")
+save_model_hdf5(model, filepath = "app/models/keras_model.h5")
