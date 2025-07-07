@@ -2,44 +2,37 @@ library(shiny)
 library(keras)
 library(DT)
 
-# Charger le modèle
-model <- load_model_hdf5("models/fraud_model.h5")
+model <- load_model_hdf5("models/keras_model.h5")
 
-# Interface
 ui <- fluidPage(
-  titlePanel("Fraud Detection Dashboard"),
-  sidebarLayout(
-    sidebarPanel(
-      fileInput("file", "Upload CSV"),
-      actionButton("predict", "Predict")
-    ),
-    mainPanel(
-      DTOutput("table"),
-      plotOutput("fraudPlot")
-    )
+  titlePanel("Live Customer Feedback Classification"),
+  mainPanel(
+    actionButton("start", "Start Real-Time Analysis"),
+    DTOutput("live_data"),
+    plotOutput("fraudPlot")
   )
 )
 
-# Serveur
-server <- function(input, output) {
-  data <- reactiveVal()
+server <- function(input, output, session) {
+  values <- reactiveVal(data.frame())
 
-  observeEvent(input$predict, {
-    req(input$file)
-    df <- read.csv(input$file$datapath)
-    pred <- predict(model, as.matrix(df[, c("amount", "customer_age")]))
-    df$predicted_fraud <- ifelse(pred > 0.5, "Yes", "No")
-    data(df)
+  observeEvent(input$start, {
+    invalidateLater(3000, session)  # réexécute tous les 3s
+    observe({
+      files <- list.files("app/stream_input", full.names = TRUE)
+      for (file in files) {
+        df <- read.csv(file)
+        pred <- predict(model, as.matrix(df))
+        df$Prediction <- ifelse(pred > 0.5, "Positive", "Negative")
+        values(rbind(values(), df))
+        file.remove(file)
+      }
+    })
   })
 
-  output$table <- renderDT({
-    req(data())
-    datatable(data())
-  })
-
+  output$live_data <- renderDT({ values() })
   output$fraudPlot <- renderPlot({
-    req(data())
-    barplot(table(data()$predicted_fraud), col = c("green", "red"), main = "Fraud Predictions")
+    barplot(table(values()$Prediction), col = c("green", "red"))
   })
 }
 
