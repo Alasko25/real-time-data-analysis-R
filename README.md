@@ -140,7 +140,6 @@ Projet conçu dans un contexte de formation Data Science avancée avec R, Deep L
 ## 📬 Contact
 
 Pour toute question ou suggestion, n'hésitez pas à me contacter via <p>
-  <img src="https://komarev.com/ghpvc/?username=Alasko25&label=Profile%20views&color=0e75b6&style=flat" alt="Alasko25" />
   <a href="https://linkedin.com/in/alassane-tour%C3%A9-4b462728a" target="_blank"><img src="https://img.shields.io/badge/LinkedIn-Connect-blue" /></a>
   <a href="mailto:alassanretou058@gmail.com"><img src="https://img.shields.io/badge/Email-Contact-red" /></a>
 </p>.
